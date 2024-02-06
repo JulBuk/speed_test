@@ -25,7 +25,7 @@ function funcs.measure_download(url)
 
     if not status then
         --easy.close()
-        print("Error: " .. response .. "with " .. url)
+        error("Error: " .. response .. "with " .. url,0)
     end
 
     io.close(output_file)
@@ -69,27 +69,37 @@ end
 ------------------------------------------------------------------
 function funcs.get_server_list()
     local file_url = "https://raw.githubusercontent.com/JulBuk/speed_test/main/speedtest_server_list.json"
-    local server_list
-    local response_string = ""
     
-    local easy = curl.easy{
-        url = file_url,
-            writefunction = (function(response)
-                response_string = response_string .. response
-                return #response
-            end)
+    local server_list
 
-    }
-    local status, response = pcall(easy.perform, easy)
+    local server_list_file = io.open("speedtest_server_list.json","r+")
+    if server_list_file then
+        server_list = cjson.decode(server_list_file:read())
+        return server_list
+    else
+        local server_list_file = io.open("speedtest_server_list.json","w+")
 
-    if not status then
-        --easy.close()
-        error("Error: " .. response)
+        local response_string = ""
+
+        local easy = curl.easy{
+            url = file_url,
+                writefunction = (function(response)
+                    response_string = response_string .. response
+                    return #response
+                end)
+        }
+        local status, response = pcall(easy.perform, easy)
+
+        if not status then
+            --easy.close()
+            error("Error: " .. response)
+        end
+
+        easy:close()
+        server_list_file:write(response_string)
+        server_list = cjson.decode(response_string)
+        return server_list
     end
-
-    easy:close()
-    server_list = cjson.decode(response_string)
-    return server_list
 end
 ------------------------------------------------------------------
 function funcs.find_best_server(server_list, location)
@@ -113,7 +123,7 @@ function funcs.find_best_server(server_list, location)
             if not status then
                 easy:close()
 
-                print("Error: " .. response .. " while fetching server " .. value["host"])
+                error("Error: " .. response .. " while fetching server " .. value["host"])
                 break
 
             else
@@ -154,5 +164,25 @@ function funcs.get_location()
 
     return location
 end
+------------------------------------------------------------------
+function funcs.check_connection()
+    local url = "https://1.1.1.1/"
 
+    local easy = curl.easy{
+        url = url,
+            writefunction = (function(response)
+                return #response
+            end)
+    }
+
+    easy:setopt(curl.OPT_NOBODY, true)
+    easy:setopt(curl.OPT_HEADER, true)
+
+    local status, response = pcall(easy.perform, easy)
+    
+    easy:close()
+    
+    return status
+
+end
 return funcs

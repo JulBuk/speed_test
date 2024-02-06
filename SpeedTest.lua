@@ -5,6 +5,10 @@ local argparse = require("argparse")
 
 local utils = require("Functions")
 
+local check = utils.check_connection()
+
+if not check then error("No internet connection") end
+
 local server_list = utils.get_server_list()
 local location = utils.get_location()
 
