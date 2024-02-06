@@ -8,6 +8,7 @@ local funcs = {}
 ------------------------------------------------------------------
 function funcs.measure_download(url)
     local output_file = io.open("/dev/null", "r+")
+    local download_speed
     if not output_file then
         error("Couldn't open /dev/null")
     end
@@ -18,19 +19,23 @@ function funcs.measure_download(url)
         },
         url = url .. "/download",
         writefunction = output_file,
+        [curl.OPT_TIMEOUT] = 10,
         noprogress = false,
     }
 
     local status, response = pcall(easy.perform, easy)
-
     if not status then
-        --easy.close()
-        error("Error: " .. response .. "with " .. url,0)
+        local error_code = tonumber(string.sub(response,-3,-2))
+        if not error_code == 28 then
+            easy:close()
+            error("Error: " .. response .. " with " .. url,0)
+        else
+        end
     end
 
     io.close(output_file)
 
-    local download_speed = easy:getinfo(curl.INFO_SPEED_DOWNLOAD)/1024/1024 *8
+    download_speed = easy:getinfo(curl.INFO_SPEED_DOWNLOAD)/1024/1024 *8
     easy:close()
 
     return download_speed
@@ -42,22 +47,30 @@ function funcs.measure_upload(url)
     if not input_file then
         error("Could not open input file")
     end
+    
+    local start_time = os.time()
+    local duration = 10
+    local upload_data
 
-    local upload_data = input_file:read(99999999)
+    upload_data = input_file:read(4096)
     local easy = curl.easy{
         httpheader = {
             "Accept: */*", "User-Agent: -o"
         },
         url = url .. "/upload",
         [curl.OPT_POSTFIELDS] = upload_data,
+        [curl.OPT_TIMEOUT] = 10,
         noprogress = false,
     }
 
     local status, response = pcall(easy.perform, easy)
 
     if not status then
-        --easy.close()
-        error("Error: " .. response .. "with " .. url)
+        local error_code = tonumber(string.sub(response,-3,-2))
+        if not error_code == 28 then
+            easy:close()
+            error("Error: " .. response .. " with " .. url,0)
+        end
     end
     
     io.close(input_file)
@@ -123,7 +136,10 @@ function funcs.find_best_server(server_list, location)
             if not status then
                 easy:close()
 
-                error("Error: " .. response .. " while fetching server " .. value["host"])
+                local error_code = string.sub(response,-3,-2)
+                if not error_code == "7 "then
+                    error("Error: " .. response .. " while fetching server " .. value["host"])
+                end
                 break
 
             else
