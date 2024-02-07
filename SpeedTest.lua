@@ -7,11 +7,6 @@ local utils = require("Functions")
 
 local check = utils.check_connection()
 
-if not check then 
-    error("No internet connection") 
-else
-    print("Beginning tests\n")
-end
 
 local server_list = utils.get_server_list()
 
@@ -19,10 +14,21 @@ local parser = argparse("Modes", "Internet speed test use modes to run speed tes
 parser:flag("-f --full", "Execute the full test")
 parser:flag("-s --server", "Find best server")
 parser:flag("-l --location", "Find user location")
-parser:option("-d --download_server_url", "Download speed test")--user specified
-parser:option("-u --upload_server_url", "Upload speed test")--user specified
+parser:option("-d --download_url", "Download speed test")--user specified
+parser:option("-u --upload_url", "Upload speed test")--user specified
 
 local args = parser:parse()
+
+if not next(args) then
+    print(parser:get_help())
+    return
+end
+
+if not check then 
+    error("No internet connection") 
+else
+    print("Beginning tests\n")
+end
 
 if args["full"] then
     
@@ -100,12 +106,12 @@ elseif args["location"] then
             error("Failed to write to json file")
         end
     end
-elseif args["download_server_url"] then
+elseif args["download_url"] then
 
-    local url = args["download_server_url"]
+    local url = args["download_url"]
     local statusd, download_speed = pcall(utils.measure_download,url)
     if statusd then
-        print("Your internet download speed: ".. string.format("%.2f ", download_speed).. "Mbps")
+        print("\nYour internet download speed: ".. string.format("%.2f ", download_speed).. "Mbps")
     
     
         local test_data = {
@@ -120,12 +126,12 @@ elseif args["download_server_url"] then
             error("Failed to write to json file")
         end
     end
-elseif args["upload_server_url"] then
+elseif args["upload_url"] then
 
-    local url = args["upload_server_url"]
+    local url = args["upload_url"]
     local statusu, upload_speed = pcall(utils.measure_upload,url)
     if statusu then
-        print("Your internet upload speed: ".. string.format("%.2f ", upload_speed).. "Mbps")
+        print("\nYour internet upload speed: ".. string.format("%.2f ", upload_speed).. "Mbps")
     
     
         local test_data = {

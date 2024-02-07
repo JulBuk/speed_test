@@ -6,26 +6,39 @@ local socket = require("socket")
 
 local funcs = {}
 
+local function download_progress_callback(dltotal, dlnow, _, _)
+    if easy:getinfo(curl.INFO_RESPONSE_CODE) == 404 then
+        return false, error("server returned 404 code", 0)
+    end
+    local elapsed_time = socket.gettime() - test_time
+    local curr_speed = dlnow / elapsed_time / 1024 / 1024 * 8
+    if curr_speed > 0 then
+        io.write(string.format("\rDownload speed: %.2f",curr_speed))
+        io.flush()
+    end
+end
 ------------------------------------------------------------------
 function funcs.measure_download(url)
+    if not url then error("Bad url.", 0) end
     local output_file = io.open("/dev/null", "r+")
     local download_speed
     if not output_file then
-        error("Couldn't open /dev/null")
+        error("Couldn't open /dev/null",0)
     else
         print("\nPreparing download speed test \n")
     end
     
-    local easy = curl.easy{
+    easy = curl.easy{
         httpheader = {
-            "Accept: */*", "User-Agent: -o"
+            "User-Agent: curl/7.81.0", "Accept: */*", "Cache-Control: no-cache"
         },
         url = url .. "/download",
         writefunction = output_file,
-        [curl.OPT_TIMEOUT] = 10,
+        progressfunction = download_progress_callback,
+        timeout = 15,
         noprogress = false,
     }
-
+    test_time = socket.gettime()
     local status, response = pcall(easy.perform, easy)
     if not status then
         local error_code = tonumber(string.sub(response,-3,-2))
@@ -44,16 +57,36 @@ function funcs.measure_download(url)
     return download_speed
 end
 --====================================================
-local function upload_progress_callback(_, _, _, upcurr)
+local function upload_progress_callback(dltotal, dlnow, ultotal, ulnow)
     if easy:getinfo(curl.INFO_RESPONSE_CODE) == 404 then
         return false, error("server returned 404 code", 0)
     end
+    --print(dlnow,ulnow)
     local elapsed_time = socket.gettime() - test_time
-    local curr_speed = upcurr / elapsed_time / 1024 / 1024 * 8
+    local curr_speed = ulnow / elapsed_time / 1024 / 1024 * 8
     if curr_speed > 0 then
-        print(cjson.encode({current_upload_speed_mbps = curr_speed}))
+        io.write(string.format("\rUpload speed: %.2f",curr_speed))
+        io.flush()
     end
 end
+
+local function read_function_callback(size, nitems)
+    if easy:getinfo(curl.INFO_RESPONSE_CODE) == 404 then
+
+        print(easy:getinfo(curl.INFO_RESPONSE_CODE))
+        return false, error("server returned 404 code", 0)
+    end
+    --print(easy:getinfo(curl.INFO_RESPONSE_CODE))
+    local input_file = io.open("/dev/zero", "r+")
+    if not input_file then
+        error("Could not open input file",0)
+    end
+    local upload_data = input_file:read(4096)
+    --print(size,nitems)
+    return upload_data
+
+end
+
 
 function funcs.upload_speed(url)
     if not url then error("Bad url.", 0) end
@@ -90,29 +123,36 @@ end
 --====================================================
 ------------------------------------------------------------------
 function funcs.measure_upload(url)
-    local input_file = io.open("/dev/zero", "r+")
-    
-    if not input_file then
-        error("Could not open input file")
-    else
-        print("\nPreparing upload speed test\n")
-    end
-    
-    local start_time = os.time()
-    local duration = 10
-    local upload_data
+    if not url then error("Bad url.", 0) end
+    print("\nPreparing upload speed test\n")
 
-    upload_data = input_file:read(4096)
-    local easy = curl.easy{
+    local input_file = io.open("/dev/zero", "r+")
+    if not input_file then
+        error("Could not open input file",0)
+    end
+    local upload_data = input_file:read(500000000)
+    io.close(input_file)
+
+    easy = curl.easy{
         httpheader = {
-            "Accept: */*", "User-Agent: -o"
+            "User-Agent: curl/7.81.0", "Accept: */*", "Cache-Control: no-cache"
         },
         url = url .. "/upload",
-        [curl.OPT_POSTFIELDS] = upload_data,
-        [curl.OPT_TIMEOUT] = 10,
+        post = true,
         noprogress = false,
+        progressfunction = upload_progress_callback,
+        --readfunction = read_function_callback,
+        postfields = upload_data,
+        httppost = curl.form({
+            file = {file = "/dev/zero",
+                    type = "text/plain", 
+                    name = "zeros"}
+        }),
+        timeout = 15,
     }
 
+
+    test_time = socket.gettime()
     local status, response = pcall(easy.perform, easy)
 
     if not status then
@@ -122,8 +162,6 @@ function funcs.measure_upload(url)
             error("Error: " .. response .. " with " .. url,0)
         end
     end
-    
-    io.close(input_file)
 
     local upload_speed = easy:getinfo(curl.INFO_SPEED_UPLOAD)/1024/1024 *8
     easy:close()
@@ -155,7 +193,7 @@ function funcs.get_server_list()
 
         if not status then
             --easy.close()
-            error("Error: " .. response)
+            error("Error: " .. response,0)
         end
 
         easy:close()
@@ -187,7 +225,7 @@ function funcs.find_best_server(server_list, location)
 
                 local error_code = string.sub(response,-3,-2)
                 if not error_code == "7 "then
-                    error("Error: " .. response .. " while fetching server " .. value["host"])
+                    error("Error: " .. response .. " while fetching server " .. value["host"],0)
                 end
                 break
 
