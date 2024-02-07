@@ -10,7 +10,7 @@ local function download_progress_callback(dltotal, dlnow, _, _)
     if easy:getinfo(curl.INFO_RESPONSE_CODE) == 404 then
         return false, error("server returned 404 code", 0)
     end
-    local elapsed_time = socket.gettime() - test_time
+    local elapsed_time = socket.gettime() - run_time
     local curr_speed = dlnow / elapsed_time / 1024 / 1024 * 8
     if curr_speed > 0 then
         io.write(string.format("\rDownload speed: %.2f",curr_speed))
@@ -38,7 +38,7 @@ function funcs.measure_download(url)
         timeout = 15,
         noprogress = false,
     }
-    test_time = socket.gettime()
+    run_time = socket.gettime()
     local status, response = pcall(easy.perform, easy)
     if not status then
         local error_code = tonumber(string.sub(response,-3,-2))
@@ -62,7 +62,7 @@ local function upload_progress_callback(dltotal, dlnow, ultotal, ulnow)
         return false, error("server returned 404 code", 0)
     end
     --print(dlnow,ulnow)
-    local elapsed_time = socket.gettime() - test_time
+    local elapsed_time = socket.gettime() - run_time
     local curr_speed = ulnow / elapsed_time / 1024 / 1024 * 8
     if curr_speed > 0 then
         io.write(string.format("\rUpload speed: %.2f",curr_speed))
@@ -105,7 +105,7 @@ function funcs.upload_speed(url)
         timeout = 15
     })
 
-    test_time = socket.gettime()
+    run_time = socket.gettime()
     status, value = pcall(easy.perform, easy)
     if not status and value ~=
         "[CURL-EASY][OPERATION_TIMEDOUT] Timeout was reached (28)" then
@@ -146,13 +146,13 @@ function funcs.measure_upload(url)
         httppost = curl.form({
             file = {file = "/dev/zero",
                     type = "text/plain", 
-                    name = "zeros"}
+                    name = "zero"}
         }),
         timeout = 15,
     }
 
 
-    test_time = socket.gettime()
+    run_time = socket.gettime()
     local status, response = pcall(easy.perform, easy)
 
     if not status then

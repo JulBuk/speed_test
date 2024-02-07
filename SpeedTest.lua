@@ -30,6 +30,17 @@ else
     print("Beginning tests\n")
 end
 
+local function write_to_json(test_data)
+    local test_json = cjson.encode(test_data)
+    local file = io.open("test.json", "w")
+    if file then
+        file:write(test_json)
+        file:close()
+    else
+        error("Failed to write to json file")
+    end
+end
+
 if args["full"] then
     
     local statusl, location = pcall(utils.get_location)
@@ -57,19 +68,12 @@ if args["full"] then
             upload_speed = upload_speed,
             best_isp = best_isp,
         }
-        local test_json = cjson.encode(test_data)
-        local file = io.open("test.json", "w")
-        if file then
-            file:write(test_json)
-            file:close()
-        else
-            error("Failed to write to json file")
-        end
+        write_to_json(test_data)
     else
         error("Failed to write to json file")
     end
 elseif args["server"] then
-
+    local statusl, location = pcall(utils.get_location)
     local statuss, best_isp = pcall(utils.find_best_server,server_list,location)
     if statuss then
         print("Your best internet service provider: ".. best_isp["provider"].." from: ".. best_isp["city"]..", "..best_isp["country"])
@@ -78,14 +82,7 @@ elseif args["server"] then
         local test_data = {
             best_isp = best_isp,
         }
-        local test_json = cjson.encode(test_data)
-        local file = io.open("test.json", "w")
-        if file then
-            file:write(test_json)
-            file:close()
-        else
-            error("Failed to write to json file")
-        end
+        write_to_json(test_data)
     end
 elseif args["location"] then
 
@@ -97,14 +94,7 @@ elseif args["location"] then
         local test_data = {
             location = location,
         }
-        local test_json = cjson.encode(test_data)
-        local file = io.open("test.json", "w")
-        if file then
-            file:write(test_json)
-            file:close()
-        else
-            error("Failed to write to json file")
-        end
+        write_to_json(test_data)
     end
 elseif args["download_url"] then
 
@@ -117,14 +107,7 @@ elseif args["download_url"] then
         local test_data = {
             download_speed = download_speed,
         }
-        local test_json = cjson.encode(test_data)
-        local file = io.open("test.json", "w")
-        if file then
-            file:write(test_json)
-            file:close()
-        else
-            error("Failed to write to json file")
-        end
+        write_to_json(test_data)
     end
 elseif args["upload_url"] then
 
@@ -137,13 +120,6 @@ elseif args["upload_url"] then
         local test_data = {
             upload_speed = upload_speed,
         }
-        local test_json = cjson.encode(test_data)
-        local file = io.open("test.json", "w")
-        if file then
-            file:write(test_json)
-            file:close()
-        else
-            error("Failed to write to json file")
-        end
+        write_to_json(test_data)
     end
 end
