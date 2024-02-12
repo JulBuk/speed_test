@@ -74,15 +74,19 @@ if args["full"] then
     end
 elseif args["server"] then
     local statusl, location = pcall(utils.get_location)
-    local statuss, best_isp = pcall(utils.find_best_server,server_list,location)
-    if statuss then
-        print("Your best internet service provider: ".. best_isp["provider"].." from: ".. best_isp["city"]..", "..best_isp["country"])
-        print("With server: "..best_isp["host"])       
+    if statusl then
+        local statuss, best_isp = pcall(utils.find_best_server,server_list,location)
+        if statuss then
+            print("Your best internet service provider: ".. best_isp["provider"].." from: ".. best_isp["city"]..", "..best_isp["country"])
+            print("With server: "..best_isp["host"])       
 
-        local test_data = {
-            best_isp = best_isp,
-        }
-        write_to_json(test_data)
+            local test_data = {
+                best_isp = best_isp,
+            }
+            write_to_json(test_data)
+        end
+    else
+        error("User location not found")
     end
 elseif args["location"] then
 
@@ -99,27 +103,38 @@ elseif args["location"] then
 elseif args["download_url"] then
 
     local url = args["download_url"]
-    local statusd, download_speed = pcall(utils.measure_download,url)
-    if statusd then
-        print("\nYour internet download speed: ".. string.format("%.2f ", download_speed).. "Mbps")
-    
-    
-        local test_data = {
-            download_speed = download_speed,
-        }
-        write_to_json(test_data)
+    local _, statuscon = pcall(utils.check_connection, url)
+    if statuscon then
+        local statusd, download_speed = pcall(utils.measure_download,url)
+        
+        if statusd then
+            print("\nYour internet download speed: ".. string.format("%.2f ", download_speed).. "Mbps")
+        
+        
+            local test_data = {
+                download_speed = download_speed,
+            }
+            write_to_json(test_data)
+        end
+    else
+        error("Server: " .. url .. " is not working")
     end
 elseif args["upload_url"] then
 
     local url = args["upload_url"]
-    local statusu, upload_speed = pcall(utils.measure_upload,url)
-    if statusu then
-        print("\nYour internet upload speed: ".. string.format("%.2f ", upload_speed).. "Mbps")
-    
-    
-        local test_data = {
-            upload_speed = upload_speed,
-        }
-        write_to_json(test_data)
+    local _, statuscon = pcall(utils.check_connection, url)
+    if statuscon then
+        local statusu, upload_speed = pcall(utils.measure_upload,url)
+        if statusu then
+            print("\nYour internet upload speed: ".. string.format("%.2f ", upload_speed).. "Mbps")
+        
+        
+            local test_data = {
+                upload_speed = upload_speed,
+            }
+            write_to_json(test_data)
+        end
+    else
+        error("Server: " .. url .. " is not working")
     end
 end

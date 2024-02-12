@@ -13,7 +13,7 @@ local function download_progress_callback(dltotal, dlnow, _, _)
     local elapsed_time = socket.gettime() - run_time
     local curr_speed = dlnow / elapsed_time / 1024 / 1024 * 8
     if curr_speed > 0 then
-        io.write(string.format("\rDownload speed: %.2f",curr_speed))
+        io.write(string.format("\rDownload speed: %.2f ",curr_speed))
         io.flush()
     end
 end
@@ -65,62 +65,11 @@ local function upload_progress_callback(dltotal, dlnow, ultotal, ulnow)
     local elapsed_time = socket.gettime() - run_time
     local curr_speed = ulnow / elapsed_time / 1024 / 1024 * 8
     if curr_speed > 0 then
-        io.write(string.format("\rUpload speed: %.2f",curr_speed))
+        io.write(string.format("\rUpload speed: %.2f ",curr_speed))
         io.flush()
     end
 end
 
-local function read_function_callback(size, nitems)
-    if easy:getinfo(curl.INFO_RESPONSE_CODE) == 404 then
-
-        print(easy:getinfo(curl.INFO_RESPONSE_CODE))
-        return false, error("server returned 404 code", 0)
-    end
-    --print(easy:getinfo(curl.INFO_RESPONSE_CODE))
-    local input_file = io.open("/dev/zero", "r+")
-    if not input_file then
-        error("Could not open input file",0)
-    end
-    local upload_data = input_file:read(4096)
-    --print(size,nitems)
-    return upload_data
-
-end
-
-
-function funcs.upload_speed(url)
-    if not url then error("Bad url.", 0) end
-    easy = curl.easy({
-        httpheader = {
-            "User-Agent: curl/7.81.0", "Accept: */*", "Cache-Control: no-cache"
-        },
-        url = url .. "/upload",
-        post = true,
-        noprogress = false,
-        writefunction = io.open("/dev/null", "r+"),
-        progressfunction = upload_progress_callback,
-        httppost = curl.form({
-            file = {file = "/dev/zero", type = "text/plain", name = "zeros"}
-        }),
-        timeout = 15
-    })
-
-    run_time = socket.gettime()
-    status, value = pcall(easy.perform, easy)
-    if not status and value ~=
-        "[CURL-EASY][OPERATION_TIMEDOUT] Timeout was reached (28)" then
-        easy:close()
-        error("Error: " .. value .. " while testing upload speed with host " ..
-                  url, 0)
-    end
-
-    local up_speed = easy:getinfo(curl.INFO_SPEED_UPLOAD) / 1024 / 1024 * 8
-
-    easy:close()
-
-    return up_speed
-end
---====================================================
 ------------------------------------------------------------------
 function funcs.measure_upload(url)
     if not url then error("Bad url.", 0) end
@@ -150,7 +99,7 @@ function funcs.measure_upload(url)
         }),
         timeout = 15,
     }
-
+    
 
     run_time = socket.gettime()
     local status, response = pcall(easy.perform, easy)
@@ -209,7 +158,11 @@ function funcs.find_best_server(server_list, location)
 
     local best_server = ""
     local min_latency = math.huge
-    print("\nStarting searching for best server")
+    if server_list and location then
+        print("\nStarting searching for best server")
+    else
+        error("Provided server list or location is empty")
+    end
     for i, value in ipairs(server_list) do
 
         if string.find(location[1]["country"], value["country"]) then
@@ -267,8 +220,11 @@ function funcs.get_location()
     return location
 end
 ------------------------------------------------------------------
-function funcs.check_connection()
-    local url = "https://1.1.1.1/"
+function funcs.check_connection(provided_url)
+    local url = provided_url
+    if not url or #url == 0 then
+        url = "https://1.1.1.1" 
+    end
 
     local easy = curl.easy{
         url = url,
